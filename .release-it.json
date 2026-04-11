@@ -13,6 +13,6 @@
     "publish": false
   },
   "hooks": {
-    "after:bump": "node scripts/sync-version.js ${version}"
+    "after:bump": "node scripts/sync-version.cjs ${version}"
   }
 }
