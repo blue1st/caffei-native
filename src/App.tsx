@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import packageJson from "../package.json";
 
 interface AppStatus {
   is_on: boolean;
@@ -73,7 +74,7 @@ function App() {
       }
       
       const nextProcs = [...current, trimmedName];
-      await invoke("set_procs", { procs: nextProcs });
+      await invoke("set_procs", { props: nextProcs });
       
       setProcesses(prev => [...prev, { name: trimmedName }]);
       setShowPicker(false);
@@ -220,6 +221,10 @@ function App() {
 
         <div className="info">
           <p>💡 メニューバーのアイコンをクリックで即時 ON/OFF 切り替え可能</p>
+        </div>
+
+        <div className="version-info" style={{ marginTop: '20px', fontSize: '0.8rem', opacity: 0.6, textAlign: 'center' }}>
+          Version: {packageJson.version}
         </div>
       </div>
     </div>
