@@ -6,9 +6,6 @@ authors = ["you"]
 edition = "2021"
 
 
-[[bin]]
-name = "caffei-native"
-path = "bin/main.rs"
 [lib]
 name = "caffei_native_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
