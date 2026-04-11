@@ -187,7 +187,7 @@ async fn check_app_running(app_name: &str) -> bool {
 
 use tauri::{
     menu::{Menu, PredefinedMenuItem},
-    tray::{TrayIconBuilder, TrayIconEvent},
+    tray::TrayIconBuilder,
     Manager, Runtime,
 };
 
@@ -299,16 +299,7 @@ pub fn run() {
                         _ => {}
                     }
                 })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click { .. } = event {
-                        let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
-                            let w: tauri::WebviewWindow = window;
-                            let _ = w.show();
-                            let _ = w.set_focus();
-                        }
-                    }
-                })
+
                 .build(app)?;
 
             // Initial tray menu
