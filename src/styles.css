@@ -28,7 +28,7 @@ body {
   color: var(--text);
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   min-height: 100vh;
 }
 
@@ -36,14 +36,14 @@ body {
   width: 100%;
   display: flex;
   justify-content: center;
-  padding: 20px;
+  padding: 0;
 }
 
 .card {
   background: var(--card-bg);
   padding: 2rem;
-  border-radius: 1rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  border-radius: 0;
+  box-shadow: none;
   width: 100%;
   max-width: 450px;
   display: flex;
@@ -236,7 +236,7 @@ body {
   color: white;
   font-size: 0.65rem;
   padding: 0.1rem 0.4rem;
-  border-radius: 1rem;
+  border-radius: 0;
   font-weight: 600;
   animation: pulse 2s infinite;
 }
@@ -290,7 +290,7 @@ body {
 .picker-content {
   background: white;
   padding: 1.5rem;
-  border-radius: 1rem;
+  border-radius: 0;
   width: 90%;
   max-width: 350px;
   max-height: 80vh;
