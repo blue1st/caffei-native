@@ -46,6 +46,7 @@ pub struct CaffeineState {
     pub config: Arc<Mutex<MonitorConfig>>,
     pub process: Arc<Mutex<Option<Child>>>,
     pub is_manual: Arc<Mutex<bool>>,
+    pub is_paused: Arc<Mutex<bool>>,
     pub active_reason: Arc<Mutex<Option<String>>>,
     pub active_monitored_apps: Arc<Mutex<Vec<String>>>,
 }
@@ -56,6 +57,7 @@ impl Clone for CaffeineState {
             config: Arc::clone(&self.config),
             process: Arc::clone(&self.process),
             is_manual: Arc::clone(&self.is_manual),
+            is_paused: Arc::clone(&self.is_paused),
             active_reason: Arc::clone(&self.active_reason),
             active_monitored_apps: Arc::clone(&self.active_monitored_apps),
         }
@@ -68,6 +70,7 @@ impl Clone for CaffeineState {
 pub struct AppStatus {
     pub is_on: bool,
     pub is_manual: bool,
+    pub is_paused: bool,
     pub active_reason: Option<String>,
     pub active_processes: Vec<String>,
 }
@@ -81,8 +84,7 @@ impl Drop for CaffeineState {
     }
 }
 
-#[tauri::command]
-async fn toggle(state: tauri::State<'_, CaffeineState>, app_handle: tauri::AppHandle) -> Result<AppStatus, String> {
+fn perform_toggle<R: tauri::Runtime>(state: &CaffeineState, app_handle: &tauri::AppHandle<R>) -> Result<AppStatus, String> {
     {
         let mut process_lock = state.process.lock().unwrap();
         let mut manual_lock = state.is_manual.lock().unwrap();
@@ -109,12 +111,58 @@ async fn toggle(state: tauri::State<'_, CaffeineState>, app_handle: tauri::AppHa
 
     let is_on = state.process.lock().unwrap().is_some();
     let is_manual = *state.is_manual.lock().unwrap();
+    let is_paused = *state.is_paused.lock().unwrap();
     let active_reason = state.active_reason.lock().unwrap().clone();
     let active_processes = state.active_monitored_apps.lock().unwrap().clone();
 
     Ok(AppStatus {
         is_on,
         is_manual,
+        is_paused,
+        active_reason,
+        active_processes,
+    })
+}
+
+#[tauri::command]
+async fn toggle(state: tauri::State<'_, CaffeineState>, app_handle: tauri::AppHandle) -> Result<AppStatus, String> {
+    perform_toggle(&state, &app_handle)
+}
+
+#[tauri::command]
+async fn toggle_pause(state: tauri::State<'_, CaffeineState>, app_handle: tauri::AppHandle) -> Result<AppStatus, String> {
+    {
+        let mut paused_lock = state.is_paused.lock().unwrap();
+        *paused_lock = !*paused_lock;
+        
+        if *paused_lock {
+            let mut process_lock = state.process.lock().unwrap();
+            let manual_lock = state.is_manual.lock().unwrap();
+            let mut reason_lock = state.active_reason.lock().unwrap();
+            let mut active_mon_lock = state.active_monitored_apps.lock().unwrap();
+
+            if !*manual_lock && process_lock.is_some() {
+                if let Some(mut p) = process_lock.take() {
+                    let _ = p.kill();
+                }
+                *reason_lock = None;
+                active_mon_lock.clear();
+            }
+        }
+    }
+    
+    let _ = update_tray_menu(&app_handle, &state);
+    
+    let is_on = state.process.lock().unwrap().is_some();
+    let is_manual = *state.is_manual.lock().unwrap();
+    let is_paused = *state.is_paused.lock().unwrap();
+    let active_reason = state.active_reason.lock().unwrap().clone();
+    let active_processes = state.active_monitored_apps.lock().unwrap().clone();
+
+    Ok(AppStatus {
+        is_on,
+        is_manual,
+        is_paused,
         active_reason,
         active_processes,
     })
@@ -124,12 +172,14 @@ async fn toggle(state: tauri::State<'_, CaffeineState>, app_handle: tauri::AppHa
 async fn get_status(state: tauri::State<'_, CaffeineState>) -> Result<AppStatus, String> {
     let is_on = state.process.lock().unwrap().is_some();
     let is_manual = *state.is_manual.lock().unwrap();
+    let is_paused = *state.is_paused.lock().unwrap();
     let active_reason = state.active_reason.lock().unwrap().clone();
     let active_processes = state.active_monitored_apps.lock().unwrap().clone();
 
     Ok(AppStatus {
         is_on,
         is_manual,
+        is_paused,
         active_reason,
         active_processes,
     })
@@ -194,21 +244,36 @@ use tauri::{
 fn update_tray_menu<R: Runtime>(handle: &tauri::AppHandle<R>, state: &CaffeineState) -> tauri::Result<()> {
     let is_on = state.process.lock().unwrap().is_some();
     let reason = state.active_reason.lock().unwrap().clone();
+    let is_manual = *state.is_manual.lock().unwrap();
     
     let status_text = if is_on {
-        format!("● スリープ抑制中 ({})", reason.unwrap_or_else(|| "手動".to_string()))
+        format!("● スリープ抑制中: {}", reason.unwrap_or_else(|| "手動".to_string()))
     } else {
-        "○ スリープ可能".to_string()
+        "○ スリープ可能 (待機中)".to_string()
     };
 
     let menu = Menu::with_id(handle, "tray_menu")?;
     let status_item = tauri::menu::MenuItemBuilder::new(status_text).enabled(false).build(handle)?;
-    let separator = PredefinedMenuItem::separator(handle)?;
+    
+    let toggle_label = if is_on && is_manual {
+        "手動抑制を終了"
+    } else {
+        "手動抑制を開始"
+    };
+    let toggle_item = tauri::menu::MenuItemBuilder::with_id("toggle", toggle_label).build(handle)?;
+
+    let is_paused = *state.is_paused.lock().unwrap();
+    let pause_item = tauri::menu::CheckMenuItemBuilder::with_id("pause", "アプリ監視を一時停止").checked(is_paused).build(handle)?;
+    let sep1 = PredefinedMenuItem::separator(handle)?;
+    let sep2 = PredefinedMenuItem::separator(handle)?;
     let show_item = tauri::menu::MenuItemBuilder::with_id("show", "ウィンドウを表示").enabled(true).build(handle)?;
     let quit_item = tauri::menu::MenuItemBuilder::with_id("quit", "終了").enabled(true).build(handle)?;
 
     menu.append(&status_item)?;
-    menu.append(&separator)?;
+    menu.append(&sep1)?;
+    menu.append(&toggle_item)?;
+    menu.append(&pause_item)?;
+    menu.append(&sep2)?;
     menu.append(&show_item)?;
     menu.append(&quit_item)?;
 
@@ -265,6 +330,7 @@ pub fn run() {
         config: Arc::new(Mutex::new(MonitorConfig::default())),
         process: Arc::new(Mutex::new(None)),
         is_manual: Arc::new(Mutex::new(false)),
+        is_paused: Arc::new(Mutex::new(false)),
         active_reason: Arc::new(Mutex::new(None)),
         active_monitored_apps: Arc::new(Mutex::new(Vec::new())),
     };
@@ -282,6 +348,7 @@ pub fn run() {
             }
             
             // Setup Tray Icon
+            let state_for_tray = state_clone.clone();
             let _ = TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().unwrap().clone())
                 .on_menu_event(move |handle, event| {
@@ -292,6 +359,32 @@ pub fn run() {
                                 let _ = w.show();
                                 let _ = w.set_focus();
                             }
+                        }
+                        "toggle" => {
+                            let _ = perform_toggle(&state_for_tray, handle);
+                        }
+                        "pause" => {
+                            {
+                                let mut paused_lock = state_for_tray.is_paused.lock().unwrap();
+                                *paused_lock = !*paused_lock;
+
+                                if *paused_lock {
+                                    let mut process_lock = state_for_tray.process.lock().unwrap();
+                                    let manual_lock = state_for_tray.is_manual.lock().unwrap();
+                                    let mut reason_lock = state_for_tray.active_reason.lock().unwrap();
+                                    let mut active_mon_lock = state_for_tray.active_monitored_apps.lock().unwrap();
+
+                                    if !*manual_lock && process_lock.is_some() {
+                                        if let Some(mut p) = process_lock.take() {
+                                            let _ = p.kill();
+                                        }
+                                        *reason_lock = None;
+                                        active_mon_lock.clear();
+                                    }
+                                }
+                            }
+                            
+                            let _ = update_tray_menu(handle, &state_for_tray);
                         }
                         "quit" => {
                             handle.exit(0);
@@ -306,12 +399,13 @@ pub fn run() {
             let _ = update_tray_menu(&handle, &state_clone);
 
             // Monitoring loop
+            let state_for_loop = state_clone.clone();
             tauri::async_runtime::spawn(async move {
                 loop {
                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                     
                     let procs = {
-                        let lock = state_clone.config.lock().unwrap();
+                        let lock = state_for_loop.config.lock().unwrap();
                         lock.processes.clone()
                     };
 
@@ -323,14 +417,16 @@ pub fn run() {
                     }
 
                     let changed = {
-                        let mut process_lock = state_clone.process.lock().unwrap();
-                        let manual_lock = state_clone.is_manual.lock().unwrap();
-                        let mut reason_lock = state_clone.active_reason.lock().unwrap();
-                        let mut active_mon_lock = state_clone.active_monitored_apps.lock().unwrap();
+                        let mut process_lock = state_for_loop.process.lock().unwrap();
+                        let mut active_mon_lock = state_for_loop.active_monitored_apps.lock().unwrap();
+                        let manual_lock = state_for_loop.is_manual.lock().unwrap();
+                        let mut reason_lock = state_for_loop.active_reason.lock().unwrap();
 
                         let mut changes_made = false;
 
-                        if !active_app.is_empty() {
+                        let is_paused = *state_for_loop.is_paused.lock().unwrap();
+
+                        if !active_app.is_empty() && !is_paused {
                             if *active_mon_lock != active_app {
                                 *active_mon_lock = active_app.clone();
                                 changes_made = true;
@@ -369,7 +465,7 @@ pub fn run() {
                     }; // Drop locks here!
 
                     if changed {
-                        let _ = update_tray_menu(&handle, &state_clone);
+                        let _ = update_tray_menu(&handle, &state_for_loop);
                     }
                 }
             });
@@ -383,6 +479,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             toggle,
+            toggle_pause,
             get_status,
             set_procs,
             get_procs,

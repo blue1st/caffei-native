@@ -5,6 +5,7 @@ import packageJson from "../package.json";
 interface AppStatus {
   is_on: boolean;
   is_manual: boolean;
+  is_paused: boolean;
   active_reason: string | null;
   active_processes: string[];
 }
@@ -14,7 +15,7 @@ interface ProcessItem {
 }
 
 function App() {
-  const [status, setStatus] = useState<AppStatus>({ is_on: false, is_manual: false, active_reason: null, active_processes: [] });
+  const [status, setStatus] = useState<AppStatus>({ is_on: false, is_manual: false, is_paused: false, active_reason: null, active_processes: [] });
   const [processes, setProcesses] = useState<ProcessItem[]>([]);
   const [runningProcesses, setRunningProcesses] = useState<string[]>([]);
   const [showPicker, setShowPicker] = useState<boolean>(false);
@@ -62,6 +63,16 @@ function App() {
     }
   };
 
+  const handleTogglePause = async () => {
+    try {
+      const newStatus = await invoke("toggle_pause") as AppStatus;
+      setStatus(newStatus);
+      setLastError(null);
+    } catch (error) {
+      setLastError(`Pause Toggle Error: ${error}`);
+    }
+  };
+
   const handleAddProcess = async (name: string) => {
     const trimmedName = name.trim();
     if (!trimmedName) return;
@@ -74,7 +85,7 @@ function App() {
       }
       
       const nextProcs = [...current, trimmedName];
-      await invoke("set_procs", { props: nextProcs });
+      await invoke("set_procs", { procs: nextProcs });
       
       setProcesses(prev => [...prev, { name: trimmedName }]);
       setShowPicker(false);
@@ -122,7 +133,7 @@ function App() {
         <h1 className="title">☕ Caffei Native</h1>
         
         {lastError && (
-          <div className="error-banner" style={{ background: '#ff4444', color: 'white', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
+          <div className="error-banner" style={{ background: '#ff4441', color: 'white', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
             <strong>Error:</strong> {lastError}
           </div>
         )}
@@ -132,16 +143,24 @@ function App() {
             className={`toggle-button ${status.is_on && status.is_manual ? 'active' : ''}`}
             onClick={handleToggle}
           >
-            {status.is_on && status.is_manual ? "⏸️ 手動停止" : "▶️ 手動開始"}
+            {status.is_on && status.is_manual ? "⏸️ 手動抑制を停止" : "▶️ 手動で抑制開始"}
+          </button>
+          
+          <button 
+            className={`pause-button ${status.is_paused ? 'active' : ''}`}
+            onClick={handleTogglePause}
+            title={status.is_paused ? "監視を再開" : "監視を一時停止"}
+          >
+            {status.is_paused ? "🔄 監視を再開" : "⏸️ 監視を一時停止"}
           </button>
         </div>
 
-        <div className={`status-display ${status.is_on ? 'active' : ''}`}>
+        <div className={`status-display ${status.is_on ? 'active' : ''} ${status.is_paused ? 'paused' : ''}`}>
           <div className="status-dot"></div>
           <div className="status-text">
             <span className="label">現在の状態:</span>
             <span className="value">
-              {status.is_on ? "スリープ抑制中" : "通常（スリープ可能）"}
+              {status.is_on ? "スリープ抑制中" : (status.is_paused ? "一時停止中" : "通常（スリープ可能）")}
             </span>
           </div>
           {status.active_reason && (
@@ -154,7 +173,7 @@ function App() {
 
         <div className="monitoring-section">
           <div className="section-header">
-            <h2>監視プロセス</h2>
+            <h2 className="monitoring-title">監視プロセス</h2>
             <div className="button-group">
               <button className="picker-btn secondary" onClick={() => setShowPicker(!showPicker)}>
                 🔍 プロセスから選択
@@ -199,10 +218,11 @@ function App() {
             {processes.map((proc, index) => {
               const isDetected = status.active_processes.includes(proc.name);
               return (
-                <div key={index} className={`process-item ${isDetected ? 'detected' : ''}`}>
-                  <span className="process-name">
+                <div key={index} className={`process-item ${isDetected ? 'detected' : ''} ${status.is_paused ? 'paused-item' : ''}`}>
+                  <span className="process-name border-none">
                     {proc.name}
-                    {isDetected && <span className="detected-badge">検出中</span>}
+                    {isDetected && !status.is_paused && <span className="detected-badge">検出中</span>}
+                    {isDetected && status.is_paused && <span className="detected-badge inactive">検出中</span>}
                   </span>
                   <button 
                     className="remove-btn"
@@ -220,7 +240,7 @@ function App() {
         </div>
 
         <div className="info">
-          <p>💡 メニューバーのアイコンをクリックで即時 ON/OFF 切り替え可能</p>
+          <p>💡 メニューバーのアイコンをクリックで即時 ON/OFF 切りᥱ替え可能</p>
         </div>
 
         <div className="version-info" style={{ marginTop: '20px', fontSize: '0.8rem', opacity: 0.6, textAlign: 'center' }}>

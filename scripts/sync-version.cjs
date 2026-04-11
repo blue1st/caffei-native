@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const { execSync } = require('child_process');
+
 /**
  * Syncs the version from package.json to src-tauri/Cargo.toml and src-tauri/tauri.conf.json
  */
@@ -22,7 +24,7 @@ function syncVersion() {
     console.log(`✅ Updated tauri.conf.json to ${version}`);
   }
 
-  // 2. Update Cargo.toml
+  // 2. Update Cargo.toml and Cargo.lock
   const cargoPath = path.join(rootDir, 'src-tauri', 'Cargo.toml');
   if (fs.existsSync(cargoPath)) {
     let cargo = fs.readFileSync(cargoPath, 'utf8');
@@ -30,6 +32,17 @@ function syncVersion() {
     cargo = cargo.replace(/^version = ".*"/m, `version = "${version}"`);
     fs.writeFileSync(cargoPath, cargo);
     console.log(`✅ Updated Cargo.toml to ${version}`);
+
+    // Update Cargo.lock
+    try {
+      execSync(`cargo update -p caffei-native --manifest-path ${cargoPath}`);
+      console.log(`✅ Updated Cargo.lock`);
+    } catch (error) {
+      console.error('❌ Failed to update Cargo.lock:', error.message);
+      // We don't exit(1) here to allow the process to continue even if cargo update fails,
+      // though in a release context it might be better to fail.
+      // But usually it's better to at least have the other files updated.
+    }
   }
 }
 
