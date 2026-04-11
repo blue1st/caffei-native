@@ -1,6 +1,6 @@
 {
   "name": "caffei-native",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "macOS caffeine app with process monitoring",
   "private": "https://github.com/tauri-apps/tauri/issues",
   "author": "Tauri",
@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "release": "release-it"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
@@ -23,6 +24,7 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^5.4.14"
+    "vite": "^5.4.14",
+    "release-it": "^17.10.0"
   }
 }
