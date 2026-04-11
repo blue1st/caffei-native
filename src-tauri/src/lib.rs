@@ -186,7 +186,7 @@ async fn check_app_running(app_name: &str) -> bool {
 }
 
 use tauri::{
-    menu::{Menu, MenuItem, PredefinedMenuItem},
+    menu::{Menu, PredefinedMenuItem},
     tray::{TrayIconBuilder, TrayIconEvent},
     Manager, Runtime,
 };
