@@ -1,0 +1,12 @@
+{
+  "identifier": "allow-custom-commands",
+  "description": "Allows custom commands defined in lib.rs",
+  "commands": [
+    "toggle",
+    "get_status",
+    "set_procs",
+    "get_procs",
+    "get_running_processes",
+    "pick_app"
+  ]
+}
