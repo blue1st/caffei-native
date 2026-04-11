@@ -21,7 +21,7 @@ function App() {
   const [showPicker, setShowPicker] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [lastError, setLastError] = useState<string | null>(null);
-  
+
   useEffect(() => {
     // Load initial data
     invoke("get_procs")
@@ -30,7 +30,7 @@ function App() {
         setProcesses(procArray.map(name => ({ name })));
       })
       .catch((e) => setLastError(String(e)));
-    
+
     invoke("get_running_processes")
       .then((procs: unknown) => {
         setRunningProcesses(procs as string[]);
@@ -43,8 +43,8 @@ function App() {
           setStatus(s as AppStatus);
         })
         .catch((e) => {
-            // Only set lastError if it's the first time or we really want to see it
-            if (!lastError) setLastError(String(e));
+          // Only set lastError if it's the first time or we really want to see it
+          if (!lastError) setLastError(String(e));
         });
     };
 
@@ -76,17 +76,17 @@ function App() {
   const handleAddProcess = async (name: string) => {
     const trimmedName = name.trim();
     if (!trimmedName) return;
-    
+
     try {
       const current = processes.map(p => p.name);
       if (current.includes(trimmedName)) {
         setShowPicker(false);
         return;
       }
-      
+
       const nextProcs = [...current, trimmedName];
       await invoke("set_procs", { procs: nextProcs });
-      
+
       setProcesses(prev => [...prev, { name: trimmedName }]);
       setShowPicker(false);
       setSearchTerm("");
@@ -123,7 +123,7 @@ function App() {
     }
   };
 
-  const filteredRunningProcesses = runningProcesses.filter(p => 
+  const filteredRunningProcesses = runningProcesses.filter(p =>
     p.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -131,22 +131,22 @@ function App() {
     <div className="app">
       <div className="card">
         <h1 className="title">☕ Caffei Native</h1>
-        
+
         {lastError && (
           <div className="error-banner" style={{ background: '#ff4441', color: 'white', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
             <strong>Error:</strong> {lastError}
           </div>
         )}
-        
+
         <div className="control-section">
-          <button 
+          <button
             className={`toggle-button ${status.is_on && status.is_manual ? 'active' : ''}`}
             onClick={handleToggle}
           >
             {status.is_on && status.is_manual ? "⏸️ 手動抑制を停止" : "▶️ 手動で抑制開始"}
           </button>
-          
-          <button 
+
+          <button
             className={`pause-button ${status.is_paused ? 'active' : ''}`}
             onClick={handleTogglePause}
             title={status.is_paused ? "監視を再開" : "監視を一時停止"}
@@ -183,7 +183,7 @@ function App() {
               </button>
             </div>
           </div>
-          
+
           <p className="description">
             以下のプロセスが実行されている間、自動的にスリープ抑制を ON にします
           </p>
@@ -191,9 +191,9 @@ function App() {
           {showPicker && (
             <div className="picker-overlay">
               <div className="picker-content">
-                <input 
-                  type="text" 
-                  placeholder="プロセスを検索..." 
+                <input
+                  type="text"
+                  placeholder="プロセスを検索..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="search-input"
@@ -224,7 +224,7 @@ function App() {
                     {isDetected && !status.is_paused && <span className="detected-badge">検出中</span>}
                     {isDetected && status.is_paused && <span className="detected-badge inactive">検出中</span>}
                   </span>
-                  <button 
+                  <button
                     className="remove-btn"
                     onClick={() => handleRemoveProcess(index)}
                   >
@@ -237,10 +237,6 @@ function App() {
               <div className="empty-list">監視対象のプロセスはありません</div>
             )}
           </div>
-        </div>
-
-        <div className="info">
-          <p>💡 メニューバーのアイコンをクリックで即時 ON/OFF 切りᥱ替え可能</p>
         </div>
 
         <div className="version-info" style={{ marginTop: '20px', fontSize: '0.8rem', opacity: 0.6, textAlign: 'center' }}>
