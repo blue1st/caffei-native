@@ -26,6 +26,16 @@
 
 ### インストール・実行
 
+#### Homebrew (macOS)
+
+[blue1st/homebrew-taps](https://github.com/blue1st/homebrew-taps) を利用して、以下のコマンドでインストールできます：
+
+```bash
+brew install --cask blue1st/taps/caffei-native
+```
+
+#### ソースからビルド
+
 1. リポジトリをクローン:
    ```bash
    git clone https://github.com/blue1st/caffei-native.git
