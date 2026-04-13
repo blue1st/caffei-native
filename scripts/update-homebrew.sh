@@ -14,20 +14,23 @@ PACKAGE_JSON="package.json"
 VERSION=$(node -p "require('./$PACKAGE_JSON').version")
 echo "Updating Homebrew Cask to version $VERSION"
 
-# Find the DMG file
-DMG_PATH=$(find src-tauri/target/release/bundle/dmg -name "*.dmg" | head -n 1)
+# We expect DMGs to be downloaded into a directory or current dir
+# Filenames are expected to be like Caffei.Native_0.1.8_aarch64.dmg and Caffei.Native_0.1.8_x64.dmg
+DMG_ARM=$(find . -name "*_aarch64.dmg" | head -n 1)
+DMG_X64=$(find . -name "*_x64.dmg" | head -n 1)
 
-if [ -z "$DMG_PATH" ]; then
-  echo "Error: Could not find DMG file in src-tauri/target/release/bundle/dmg"
+if [ -z "$DMG_ARM" ] || [ -z "$DMG_X64" ]; then
+  echo "Error: Could not find both arm64 and x64 DMG files"
+  echo "ARM: $DMG_ARM"
+  echo "X64: $DMG_X64"
   exit 1
 fi
 
-DMG_FILENAME=$(basename "$DMG_PATH")
-echo "Found DMG: $DMG_PATH ($DMG_FILENAME)"
+SHA256_ARM=$(shasum -a 256 "$DMG_ARM" | awk '{print $1}')
+SHA256_X64=$(shasum -a 256 "$DMG_X64" | awk '{print $1}')
 
-# Calculate SHA256
-SHA256=$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')
-echo "SHA256: $SHA256"
+echo "ARM SHA256: $SHA256_ARM"
+echo "X64 SHA256: $SHA256_X64"
 
 # Clone the tap repository
 TMP_DIR=$(mktemp -d)
@@ -41,15 +44,24 @@ CASK_FILE="$TMP_DIR/Casks/${CASK_NAME}.rb"
 # Create or update the Cask file
 cat <<EOF > "$CASK_FILE"
 cask "${CASK_NAME}" do
-  version "${VERSION}"
-  sha256 "${SHA256}"
+  arch arm: "aarch64", intel: "x64"
 
-  url "https://github.com/blue1st/caffei-native/releases/download/v#{version}/${DMG_FILENAME}"
+  version "${VERSION}"
+  sha256 arm:   "${SHA256_ARM}",
+         intel: "${SHA256_X64}"
+
+  url "https://github.com/blue1st/caffei-native/releases/download/v#{version}/Caffei.Native_#{version}_#{arch}.dmg"
   name "Caffei Native"
   desc "Sleep suppression tool with process monitoring"
   homepage "https://github.com/blue1st/caffei-native"
 
   app "Caffei Native.app"
+
+  installer script: {
+    executable: "/usr/bin/xattr",
+    args:       ["-rd", "com.apple.quarantine", "#{appdir}/Caffei Native.app"],
+    sudo:       false,
+  }
 
   zap trash: [
     "~/Library/Application Support/com.blue1st.caffei-native",

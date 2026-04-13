@@ -12,7 +12,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest]
+        include:
+          - platform: macos-13
+            arch: x64
+          - platform: macos-14
+            arch: aarch64
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -25,12 +29,8 @@ jobs:
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
-
-      - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+        with:
+          targets: ${{ matrix.arch == 'x64' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }}
 
       - name: install frontend dependencies
         run: npm install
@@ -39,14 +39,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__ # the action automatically replaces this with the version in package.json
+          tagName: v__VERSION__
           releaseName: "Caffei Native v__VERSION__"
           releaseBody: "See the assets below to download the latest version of Caffei Native."
           releaseDraft: true
           prerelease: false
 
+  update-tap:
+    needs: publish-tauri
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Download artifacts from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          gh release download v$VERSION --pattern "*.dmg" --dir .
+          ls -R
+
       - name: Update Homebrew Tap
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: ./scripts/update-homebrew.sh
