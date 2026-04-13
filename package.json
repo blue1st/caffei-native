@@ -11,6 +11,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "build:macos-x86_64": "tauri build --target x86_64-apple-darwin",
+    "build:macos-universal": "tauri build --target universal-apple-darwin",
     "release": "release-it"
   },
   "dependencies": {

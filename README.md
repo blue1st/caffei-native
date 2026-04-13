@@ -56,6 +56,27 @@ brew install --cask blue1st/taps/caffei-native
    npm run tauri build
    ```
 
+#### 異なるアーキテクチャ向けのビルド (Intel Mac / Universal)
+
+Apple Silicon MacからIntel Mac向けのバイナリや、両方に対応した Universal Binary をビルドするには、まず Rust のターゲットを追加する必要があります：
+
+```bash
+# Intel Mac 用ターゲットの追加
+rustup target add x86_64-apple-darwin
+# Apple Silicon 用ターゲットの追加 (必要に応じて)
+rustup target add aarch64-apple-darwin
+```
+
+その後、以下のコマンドを実行します：
+
+```bash
+# Intel Mac (x86_64) 用のビルド
+npm run build:macos-x86_64
+
+# Universal Binary (Intel & Apple Silicon 両対応) のビルド
+npm run build:macos-universal
+```
+
 ### トラブルシューティング: 「壊れているため開けません」と表示される場合
 
 GitHub Releases からダウンロードした `.app` や `.dmg` を開く際に、「“Caffei Native”は壊れているため開けません。ゴミ箱に入れる必要があります。」という警告が出ることがあります。
