@@ -44,3 +44,9 @@ jobs:
           releaseBody: "See the assets below to download the latest version of Caffei Native."
           releaseDraft: true
           prerelease: false
+
+      - name: Update Homebrew Tap
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: ./scripts/update-homebrew.sh
