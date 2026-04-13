@@ -1,6 +1,6 @@
 {
   "name": "caffei-native",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "macOS caffeine app with process monitoring",
   "private": "https://github.com/tauri-apps/tauri/issues",
   "author": "Tauri",
