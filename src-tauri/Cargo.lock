@@ -210,7 +210,7 @@ dependencies = [
 
 [[package]]
 name = "caffei-native"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "criterion",
  "serde",
