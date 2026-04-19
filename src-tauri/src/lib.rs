@@ -337,6 +337,7 @@ pub fn run() {
     let state_clone = state.clone();
     
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--minimized"])))
         .manage(state)
         .setup(move |app| {
             let handle = app.handle().clone();

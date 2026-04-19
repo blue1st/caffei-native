@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import packageJson from "../package.json";
 
 interface AppStatus {
@@ -21,8 +22,14 @@ function App() {
   const [showPicker, setShowPicker] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [lastError, setLastError] = useState<string | null>(null);
+  const [autostartEnabled, setAutostartEnabled] = useState<boolean>(false);
 
   useEffect(() => {
+    // Check autostart status
+    isEnabled()
+      .then(setAutostartEnabled)
+      .catch((e: any) => console.error("Failed to check autostart:", e));
+
     // Load initial data
     invoke("get_procs")
       .then((procs: unknown) => {
@@ -120,6 +127,19 @@ function App() {
       setLastError(null);
     } catch (error) {
       setLastError(`Remove Error: ${error}`);
+    }
+  };
+
+  const handleToggleAutostart = async () => {
+    try {
+      if (autostartEnabled) {
+        await disable();
+      } else {
+        await enable();
+      }
+      setAutostartEnabled(!autostartEnabled);
+    } catch (error) {
+      setLastError(`Autostart Error: ${error}`);
     }
   };
 
@@ -237,6 +257,18 @@ function App() {
               <div className="empty-list">監視対象のプロセスはありません</div>
             )}
           </div>
+        </div>
+
+        <div className="settings-section" style={{ marginTop: '20px', padding: '15px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '10px' }}>
+            <input
+              type="checkbox"
+              checked={autostartEnabled}
+              onChange={handleToggleAutostart}
+              style={{ width: '18px', height: '18px' }}
+            />
+            <span style={{ fontSize: '0.9rem' }}>ログイン時に自動起動する</span>
+          </label>
         </div>
 
         <div className="version-info" style={{ marginTop: '20px', fontSize: '0.8rem', opacity: 0.6, textAlign: 'center' }}>
