@@ -20,7 +20,8 @@
         "resizable": true,
         "fullscreen": false,
         "minWidth": 500,
-        "minHeight": 500
+        "minHeight": 500,
+        "skipTaskbar": true
       }
     ]
   },
