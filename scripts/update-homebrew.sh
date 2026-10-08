@@ -57,9 +57,10 @@ cask "${CASK_NAME}" do
 
   app "Caffei Native.app"
 
-  postflight_steps do
-    run "/usr/bin/xattr", args: ["-cr", "#{appdir}/Caffei Native.app"]
-  end
+  caveats <<~EOS
+    Caffei Native is not notarized. If macOS blocks it from running, execute:
+      xattr -cr "/Applications/Caffei Native.app"
+  EOS
 
   zap trash: [
     "~/Library/Application Support/com.blue1st.caffei-native",
